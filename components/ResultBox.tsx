@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {RedditPost} from "./types";
+import {localStorageService} from "../lib/utils/LocalStorage";
 
 const ResultBox: React.FC = () => {
     const [posts, setPosts] = useState<RedditPost[]>([]);
@@ -29,17 +30,8 @@ const ResultBox: React.FC = () => {
         setError(null);
 
         try {
-            const response = await axios.get<{
-                success: boolean;
-                data: RedditPost[];
-                pagination?: { page: number; limit: number; total: number };
-            }>('/api/posts');
-
-
-            // Handle both old format (direct array) and new format (with pagination)
-            const postsData = Array.isArray(response.data)
-                ? response.data
-                : (response.data?.data || []);
+            // Get posts from localStorage instead of API
+            const postsData = localStorageService.getPosts();
 
             if (!Array.isArray(postsData)) {
                 setPosts([]);
@@ -48,23 +40,15 @@ const ResultBox: React.FC = () => {
 
             setPosts(postsData);
         } catch (err) {
-            if (axios.isAxiosError(err)) {
-                setError(err.response?.data?.error || err.message);
-            } else {
-                setError('Failed to fetch posts');
-            }
+            setError('Failed to fetch posts from local storage');
         } finally {
             if (!silent) {
                 setLoading(false);
             }
         }
     };
-
     const filteredPosts = posts.filter(post => {
-        // Show all posts, even without analysis
         if (filter === 'all') return true;
-
-        // If filtering by sentiment, only show posts WITH analysis
         if (!post.analysis) return false;
         return post.analysis.sentiment === filter;
     });
