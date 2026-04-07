@@ -49,6 +49,7 @@ const ResultBox: React.FC = () => {
     };
     const filteredPosts = posts.filter(post => {
         if (filter === 'all') return true;
+        // Only filter by sentiment if filter is not 'all' AND post has analysis
         if (!post.analysis) return false;
         return post.analysis.sentiment === filter;
     });

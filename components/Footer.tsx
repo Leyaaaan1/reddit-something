@@ -30,7 +30,7 @@ const Footer: React.FC = () => {
                             color: '#9ca3af',
                             marginTop: '0.25rem'
                         }}>
-                            Powered by Reddit, Supabase, and Gemini AI
+                            Powered by Reddit, and Gemini AI
                         </p>
                     </div>
 

@@ -36,13 +36,13 @@ const Header: React.FC<HeaderProps> = ({ status, loading }) => {
                             fontWeight: 'bold',
                             marginBottom: '0.25rem'
                         }}>
-                            Reddit Scraper & Analyzer
+                            Reddit Scraper & Analyzer (I'm bored)
                         </h1>
                         <p style={{
                             color: '#bfdbfe',
                             fontSize: '0.875rem'
                         }}>
-                            Reddit custom scrape → Supabase → Gemini AI Pipeline
+                            Reddit custom scrape → Gemini AI Pipeline
                         </p>
                     </div>
 
