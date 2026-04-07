@@ -82,9 +82,8 @@ export class DbService {
             const data = await sql`
                 SELECT *
                 FROM reddit_posts
-                WHERE analysis IS NOT NULL
                 ORDER BY created_at DESC
-            ` as RedditPost[];
+                ` as RedditPost[];
 
             return data || [];
         } catch (err) {

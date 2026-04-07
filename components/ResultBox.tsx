@@ -61,11 +61,13 @@ const ResultBox: React.FC = () => {
     };
 
     const filteredPosts = posts.filter(post => {
-        if (!post.analysis) return false;
+        // Show all posts, even without analysis
         if (filter === 'all') return true;
+
+        // If filtering by sentiment, only show posts WITH analysis
+        if (!post.analysis) return false;
         return post.analysis.sentiment === filter;
     });
-
     const getSentimentStyle = (sentiment: string) => {
         switch (sentiment) {
             case 'positive':

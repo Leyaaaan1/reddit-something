@@ -3,17 +3,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-let sqlInstance: any = null;
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+    throw new Error('DATABASE_URL not configured in .env');
+}
 
-export const sql = new Proxy({}, {
-    get: () => {
-        if (!sqlInstance) {
-            const databaseUrl = process.env.DATABASE_URL;
-            if (!databaseUrl) {
-                throw new Error('DATABASE_URL not configured');
-            }
-            sqlInstance = neon(databaseUrl);
-        }
-        return sqlInstance;
-    }
-}) as any;
+// Create the SQL function directly - neon returns a function
+export const sql = neon(databaseUrl);
