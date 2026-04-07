@@ -8,6 +8,7 @@ export interface RedditPost {
     num_comments: number;
     url: string;
     created_at: string;
+    analysis?: AnalysisResult | null;  // Add this line
 }
 
 export interface AnalysisResult {

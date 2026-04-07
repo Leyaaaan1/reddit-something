@@ -3,6 +3,7 @@ import { apifyService } from "../../../lib/services/RedditScrape";
 import { dbService } from "../../../lib/neon/DbService";
 import { RateLimiter, delay } from "../../../lib/utils/ErrorHandler";
 import { geminiService } from "../../../lib/services/GemeniService";
+import {sql} from "../../../lib/neon/Neon";
 
 const rateLimiter = new RateLimiter(1); // 1 call per second for Gemini
 
@@ -44,7 +45,7 @@ const withTimeout = async <T>(
 export async function POST(request: Request) {
   const startTime = Date.now();
   const MAX_EXECUTION_TIME = 25000; // 25 seconds (leaving 5s buffer for Vercel's 30s limit)
-  const MAX_POSTS_TO_ANALYZE = 10; // Limit posts to prevent timeout
+  const MAX_POSTS_TO_ANALYZE = 50; // Limit posts to prevent timeout
 
   try {
     // Validate content type
@@ -174,6 +175,7 @@ export async function POST(request: Request) {
       }, { status: 200 });
     }
 
+
     // Step 3: Analyze posts (limit to prevent timeout)
     let analyzedCount = 0;
     const postsToAnalyze = storedPosts.slice(0, MAX_POSTS_TO_ANALYZE);
@@ -220,6 +222,23 @@ export async function POST(request: Request) {
     }, { status: 500 });
   }
 }
+
+export async function GET() {
+  try {
+    const result = await sql`SELECT COUNT(*) as count FROM reddit_posts`;
+    return NextResponse.json({
+      success: true,
+      totalPosts: result[0]?.count || 0,
+      message: 'Connection successful'
+    });
+  } catch (error) {
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Connection failed'
+    }, { status: 500 });
+  }
+}
+
 
 // Add CORS headers
 export async function OPTIONS() {

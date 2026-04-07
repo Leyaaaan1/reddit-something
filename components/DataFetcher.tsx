@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { ScrapeResponse } from "./types";
 import ProcessLogger, { ProcessLog } from './ProcessLogger';
+import { localStorageService } from '../lib/utils/LocalStorage';
 
 interface DataFetcherProps {
     onSuccess: () => void;
@@ -63,7 +64,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
     };
 
     const handleClearDatabase = async () => {
-        if (!confirm('Are you sure you want to delete all posts from the database? This action cannot be undone.')) {
+        if (!confirm('Are you sure you want to delete all posts? This action cannot be undone.')) {
             return;
         }
 
@@ -71,66 +72,40 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
         setError(null);
         clearLogs();
         setShowLogs(true);
-        addLog('Starting database clear...', 'info', {
-            service: 'Database',
+
+        addLog('Clearing posts...', 'info', {
+            service: 'Local Storage',
             operation: 'clear_all'
         });
 
         try {
-            const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY;
+            // Clear from localStorage
+            localStorageService.clearPosts();
 
-            if (!adminKey) {
-                addLog('Admin key not configured', 'error', {
-                    service: 'Server',
-                    operation: 'error'
-                });
-                setError('Admin key not configured. Contact administrator.');
-                setClearing(false);
-                return;
-            }
-
-            addLog('Sending clear request to server...', 'info', {
-                service: 'Server',
-                operation: 'clear_request',
-                level: 1
-            });
-
-            const clearStart = Date.now();
-            const response = await axios.delete('/api/clear', {
-                headers: {
-                    'x-admin-key': adminKey
-                }
-            });
-            const clearDuration = Date.now() - clearStart;
-
-            if (response.data.success) {
-                addLog(
-                    `Database cleared successfully! Deleted ${response.data.deletedRecords} posts`,
-                    'success',
-                    {
-                        service: 'Database',
-                        operation: 'clear_complete',
-                        duration: clearDuration,
-                        details: `Records deleted: ${response.data.deletedRecords}\nTime taken: ${clearDuration}ms`
+            // Also clear from database for consistency
+            try {
+                await axios.delete('/api/clear', {
+                    headers: {
+                        'x-admin-key': process.env.NEXT_PUBLIC_ADMIN_KEY || ''
                     }
-                );
-                alert('Database cleared successfully!');
-                onSuccess();
-            } else {
-                addLog('Failed to clear database', 'error', {
-                    service: 'Database',
-                    operation: 'clear_failed'
                 });
+            } catch (dbErr) {
+                // Database clear failed, but localStorage was cleared
+                console.warn('Database clear failed:', dbErr);
             }
+
+            addLog('✓ Posts cleared from local storage', 'success', {
+                service: 'Local Storage',
+                operation: 'clear_complete'
+            });
+
+            alert('All posts cleared!');
+            onSuccess();
         } catch (err) {
-            let errorMsg = 'Failed to clear database';
-            if (axios.isAxiosError(err)) {
-                errorMsg = err.response?.data?.error || err.message;
-            }
+            const errorMsg = err instanceof Error ? err.message : 'Failed to clear';
             addLog(errorMsg, 'error', {
-                service: 'Server',
-                operation: 'error',
-                details: err instanceof Error ? err.stack : String(err)
+                service: 'Local Storage',
+                operation: 'error'
             });
             setError(errorMsg);
         } finally {
@@ -155,39 +130,35 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                 operation: 'scrape_init'
             });
 
-            // Clear database if option is checked
+            // Clear localStorage if option is checked
             if (clearBeforeScrape) {
                 try {
                     const clearStart = Date.now();
-                    addLog('Clearing old data from database...', 'info', {
-                        service: 'Database',
+                    addLog('Clearing old data from local storage...', 'info', {
+                        service: 'Local Storage',
                         operation: 'truncate',
                         level: 1
                     });
 
-                    await axios.delete('/api/clear', {
-                        headers: {
-                            'x-admin-key': process.env.NEXT_PUBLIC_ADMIN_KEY || ''
-                        }
-                    });
+                    localStorageService.clearPosts();
 
                     const clearDuration = Date.now() - clearStart;
                     addLog('✓ Old data cleared', 'success', {
-                        service: 'Database',
+                        service: 'Local Storage',
                         operation: 'truncate',
                         level: 1,
                         duration: clearDuration
                     });
                 } catch (clearErr) {
                     addLog('Failed to clear old data (continuing anyway)', 'warning', {
-                        service: 'Database',
+                        service: 'Local Storage',
                         operation: 'truncate',
                         details: clearErr instanceof Error ? clearErr.message : String(clearErr)
                     });
                 }
             } else {
-                addLog('Skipping database clear (append mode)', 'info', {
-                    service: 'Database',
+                addLog('Skipping local storage clear (append mode)', 'info', {
+                    service: 'Local Storage',
                     operation: 'append_mode',
                     level: 1
                 });
@@ -311,6 +282,47 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                 totalPosts: response.data.scraped
             });
 
+            // ========== START: SAVE TO LOCALSTORAGE ==========
+            // Fetch posts from API and save to localStorage
+            try {
+                addLog('Saving posts to local storage...', 'info', {
+                    service: 'Local Storage',
+                    operation: 'save_start',
+                    level: 1
+                });
+
+                const postsResponse = await axios.get<any>('/api/posts');
+                const postsData = postsResponse.data?.data || [];
+
+                if (Array.isArray(postsData) && postsData.length > 0) {
+                    // Get existing posts from localStorage
+                    const existingPosts = localStorageService.getPosts();
+
+                    // Merge with new posts (avoid duplicates)
+                    const mergedPosts = [
+                        ...existingPosts.filter(ep => !postsData.some(np => np.post_id === ep.post_id)),
+                        ...postsData
+                    ];
+
+                    // Save to localStorage
+                    localStorageService.savePosts(mergedPosts);
+
+                    addLog(`✓ ${postsData.length} posts saved to local storage`, 'success', {
+                        service: 'Local Storage',
+                        operation: 'save_complete',
+                        level: 1,
+                        details: `Total posts available: ${mergedPosts.length}`
+                    });
+                }
+            } catch (err) {
+                addLog('Failed to save posts to local storage', 'warning', {
+                    service: 'Local Storage',
+                    operation: 'save_failed',
+                    details: err instanceof Error ? err.message : String(err)
+                });
+            }
+            // ========== END: SAVE TO LOCALSTORAGE ==========
+
             const totalDuration = Date.now() - startTime;
 
             if (response.data.success) {
@@ -386,7 +398,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                             Scrape Reddit Posts
                         </h2>
                         <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                            Fetch data from Reddit and store in Database
+                            Fetch data from Reddit and store locally
                         </p>
                     </div>
                 </div>
@@ -534,7 +546,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                         }}
                         onMouseEnter={(e) => !loading && !clearing && (e.currentTarget.style.background = '#b91c1c')}
                         onMouseLeave={(e) => !loading && !clearing && (e.currentTarget.style.background = '#dc2626')}
-                        title="Clear all posts from database"
+                        title="Clear all posts from local storage"
                     >
                         {clearing ? 'Clearing...' : '🗑️ Clear All'}
                     </button>
