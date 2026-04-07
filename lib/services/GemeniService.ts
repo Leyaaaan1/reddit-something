@@ -18,8 +18,6 @@ export class GeminiService {
             throw new Error('Missing gemini_api_key environment variable');
         }
         this.apiKey = key;
-        console.log('✓ Gemini AI Service initialized');
-        console.log('⏱️  Rate limit: 30 requests per minute (free tier)');
     }
 
 
@@ -30,14 +28,12 @@ export class GeminiService {
         if (now >= this.resetTime) {
             this.requestCount = 0;
             this.resetTime = now + 60000;
-            console.log('🔄 Rate limit counter reset');
         }
 
         // Check if we've hit the per-minute limit
         if (this.requestCount >= 30) {
             const waitTime = this.resetTime - now;
             if (waitTime > 0) {
-                console.log(`⏸️  Rate limit reached (30/30). Waiting ${Math.ceil(waitTime / 1000)}s...`);
                 await new Promise(resolve => setTimeout(resolve, waitTime + 1000));
                 this.requestCount = 0;
                 this.resetTime = Date.now() + 60000;
@@ -80,7 +76,6 @@ export class GeminiService {
           "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
         }`;
 
-            console.log(` AI MODEL: Calling Gemini AI (Request ${this.requestCount}/30)...`);
 
             const response = await axios.post(
                 `${this.baseUrl}/gemini-2.5-flash:generateContent?key=${this.apiKey}`,
@@ -109,7 +104,6 @@ export class GeminiService {
             const generatedText = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
 
             if (!generatedText) {
-                console.error(' Gemini returned empty response');
                 throw new Error('Empty response from Gemini API');
             }
 
@@ -119,11 +113,9 @@ export class GeminiService {
 
             // Validate the response structure
             if (!this.isValidAnalysis(analysis)) {
-                console.error(' Invalid analysis structure from Gemini:', analysis);
                 throw new Error('Invalid analysis structure');
             }
 
-            console.log(` AI MODEL: ${analysis.sentiment.toUpperCase()} | Keywords: ${analysis.keywords.slice(0, 3).join(', ')}`);
 
             return analysis;
 
@@ -136,7 +128,6 @@ export class GeminiService {
                     const retryAfter = error.response?.headers['retry-after'];
                     const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 60000; // Default to 60 seconds
 
-                    console.log(` Waiting ${Math.ceil(waitTime / 1000)} seconds before retry...`);
 
 
                     // Wait for the specified time
@@ -146,27 +137,18 @@ export class GeminiService {
                     this.requestCount = 0;
                     this.resetTime = Date.now() + 60000;
 
-                    console.log(' Retrying API call...');
                     return this.analyzeText(title, content, retryCount + 1);
 
                 } else if (status === 400) {
-                    console.error(' Bad Request - Invalid input format');
                     throw new Error('Bad Request: Invalid input format');
                 } else if (status === 403) {
-                    console.error(' API Key Invalid or Unauthorized');
                     throw new Error('API Key Invalid or Unauthorized');
                 } else {
-                    console.error(' Gemini API Error:', {
-                        status: status,
-                        message: error.response?.data?.error?.message || error.message
-                    });
                     throw error;
                 }
             } else if (error instanceof SyntaxError) {
-                console.error(' JSON Parse Error - Gemini response was not valid JSON');
                 throw new Error('JSON Parse Error');
             } else {
-                console.error(' Unexpected error:', error);
                 throw error;
             }
         }
@@ -207,16 +189,6 @@ export class GeminiService {
         );
 
         if (!isValid) {
-            console.log('⚠️  Validation Details:', {
-                isObject: typeof analysis === 'object' && analysis !== null,
-                sentiment: analysis?.sentiment,
-                validSentiment: ['positive', 'neutral', 'negative'].includes(analysis?.sentiment),
-                hasSummary: typeof analysis?.summary === 'string' && analysis?.summary.length > 0,
-                summaryLength: analysis?.summary?.length,
-                hasKeywords: Array.isArray(analysis?.keywords),
-                keywordCount: analysis?.keywords?.length,
-                allStrings: analysis?.keywords?.every((k: any) => typeof k === 'string')
-            });
         }
 
         return isValid;

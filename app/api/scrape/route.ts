@@ -1,83 +1,192 @@
 import { NextResponse } from 'next/server';
-import {apifyService} from "../../../lib/services/RedditScrape";
-import {dbService} from "../../../lib/supabase/DbService";
+import { apifyService } from "../../../lib/services/RedditScrape";
+import { dbService } from "../../../lib/neon/DbService";
 import { RateLimiter, delay } from "../../../lib/utils/ErrorHandler";
-import {geminiService} from "../../../lib/services/GemeniService";
-
+import { geminiService } from "../../../lib/services/GemeniService";
 
 const rateLimiter = new RateLimiter(1); // 1 call per second for Gemini
 
+// Input validation
+const validateScrapeRequest = (data: any) => {
+  if (!Array.isArray(data.subreddits) || data.subreddits.length === 0) {
+    throw new Error('Invalid subreddits: must be non-empty array');
+  }
+  if (data.subreddits.length > 20) {
+    throw new Error('Max 20 subreddits allowed');
+  }
+  if (typeof data.postsPerSubreddit !== 'number' ||
+      data.postsPerSubreddit < 1 || data.postsPerSubreddit > 50) {
+    throw new Error('Invalid postsPerSubreddit (must be 1-50)');
+  }
+  // Validate subreddit names (alphanumeric + underscore)
+  const validSubredditPattern = /^[a-zA-Z0-9_]+$/;
+  for (const sub of data.subreddits) {
+    if (!validSubredditPattern.test(sub) || sub.length > 50) {
+      throw new Error(`Invalid subreddit name: ${sub}`);
+    }
+  }
+};
+
+// Set timeout helper for long operations
+const withTimeout = async <T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    timeoutMessage: string
+): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
+    )
+  ]);
+};
+
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  const MAX_EXECUTION_TIME = 25000; // 25 seconds (leaving 5s buffer for Vercel's 30s limit)
+  const MAX_POSTS_TO_ANALYZE = 10; // Limit posts to prevent timeout
+
   try {
-    const { subreddits, postsPerSubreddit } = await request.json();
-
-    const subredditsToScrape = subreddits || [
-      'socialmedia',
-      'marketing',
-      'digitalmarketing',
-      'socialmediamarketing',
-      'Instagram'
-    ];
-
-    const postsLimit = postsPerSubreddit || 5;
-
-    console.log('Starting scrape process...');
-    console.log(`Subreddits: ${subredditsToScrape.join(', ')}`);
-    console.log(`Posts per subreddit: ${postsLimit}`);
-
-    // Step 1: Scrape Reddit posts using Apify
-    const posts = await apifyService.scrapeRedditPosts(subredditsToScrape, postsLimit);
-
-    if (posts.length === 0) {
+    // Validate content type
+    const contentType = request.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
       return NextResponse.json({
         success: false,
-        message: 'No posts scraped from Apify',
+        error: 'Content-Type must be application/json'
+      }, { status: 400 });
+    }
+
+    // Parse and validate request body
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid JSON in request body'
+      }, { status: 400 });
+    }
+
+    // Apply validation
+    try {
+      validateScrapeRequest(body);
+    } catch (validationError) {
+      return NextResponse.json({
+        success: false,
+        error: validationError instanceof Error ? validationError.message : 'Validation failed'
+      }, { status: 400 });
+    }
+
+    const { subreddits, postsPerSubreddit } = body;
+
+
+    // Check timeout
+    if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+      return NextResponse.json({
+        success: false,
+        error: 'Operation timeout: took too long to process request'
+      }, { status: 408 });
+    }
+
+    // Step 1: Scrape Reddit posts
+    let posts;
+    try {
+      posts = await withTimeout(
+          apifyService.scrapeRedditPosts(subreddits, postsPerSubreddit),
+          15000,
+          'Reddit scraping timeout after 15s'
+      );
+    } catch (scrapeError) {
+      return NextResponse.json({
+        success: false,
+        error: scrapeError instanceof Error ? scrapeError.message : 'Scraping failed',
         scraped: 0,
         stored: 0,
         analyzed: 0
       }, { status: 500 });
     }
 
-    console.log(`Scraped ${posts.length} posts from Apify`);
-
-    // Step 2: Store posts in Supabase
-    let storedCount = 0;
-    const storedPosts = [];
-
-    for (const post of posts) {
-      // Check if post already exists
-      const exists = await dbService.postExists(post.post_id);
-
-      if (exists) {
-        console.log(`Post ${post.post_id} already exists, skipping...`);
-        continue;
-      }
-
-      const result = await dbService.insertPost(post);
-
-      if (result.success) {
-        storedCount++;
-        storedPosts.push(post);
-        console.log(`Stored post: ${post.title.substring(0, 50)}...`);
-      } else {
-        console.error(`Failed to store post: ${result.error}`);
-      }
-
-      // Small delay between database operations
-      await delay(100);
+    if (posts.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'No posts scraped from Reddit',
+        scraped: 0,
+        stored: 0,
+        analyzed: 0
+      }, { status: 200 });
     }
 
-    console.log(`Stored ${storedCount} new posts in database`);
 
-    // Step 3: Analyze posts with Gemini
-    let analyzedCount = 0;
+    // Check timeout
+    if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+      return NextResponse.json({
+        success: true,
+        message: 'Scraping complete, analysis skipped due to timeout',
+        scraped: posts.length,
+        stored: 0,
+        analyzed: 0
+      }, { status: 200 });
+    }
 
-    for (const post of storedPosts) {
+    // Step 2: Store posts in database
+    let storedCount = 0;
+    const storedPosts = [];
+    const storageErrors = [];
+
+    for (const post of posts) {
       try {
-        // Rate limit Gemini API calls
+        const exists = await dbService.postExists(post.post_id);
+
+        if (exists) {
+          continue;
+        }
+
+        const result = await dbService.insertPost(post);
+
+        if (result.success) {
+          storedCount++;
+          storedPosts.push(post);
+        } else {
+          storageErrors.push({
+            post_id: post.post_id,
+            error: result.error || 'Unknown error'
+          });
+        }
+
+        await delay(100); // Small delay between database operations
+      } catch (error) {
+        storageErrors.push({
+          post_id: post.post_id,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+
+    // Check timeout before analysis
+    if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+      return NextResponse.json({
+        success: true,
+        message: 'Scraping complete, analysis skipped due to timeout',
+        scraped: posts.length,
+        stored: storedCount,
+        analyzed: 0
+      }, { status: 200 });
+    }
+
+    // Step 3: Analyze posts (limit to prevent timeout)
+    let analyzedCount = 0;
+    const postsToAnalyze = storedPosts.slice(0, MAX_POSTS_TO_ANALYZE);
+
+    for (const post of postsToAnalyze) {
+      // Check timeout before each analysis
+      if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+        break;
+      }
+
+      try {
         await rateLimiter.wait();
 
-        console.log(`Analyzing post: ${post.title.substring(0, 50)}...`);
 
         const analysis = await geminiService.analyzeText(post.title, post.content);
 
@@ -86,33 +195,39 @@ export async function POST(request: Request) {
 
           if (updateResult.success) {
             analyzedCount++;
-            console.log(`✓ Analyzed: ${analysis.sentiment} - ${analysis.summary.substring(0, 50)}...`);
           } else {
-            console.error(`Failed to update analysis: ${updateResult.error}`);
           }
         } else {
-          console.error('Analysis returned null');
         }
       } catch (error) {
-        console.error(`Error analyzing post ${post.post_id}:`, error);
       }
     }
 
-    console.log(`Analysis complete: ${analyzedCount}/${storedPosts.length} posts analyzed`);
 
     return NextResponse.json({
       success: true,
       message: 'Scrape and analysis complete',
       scraped: posts.length,
       stored: storedCount,
-      analyzed: analyzedCount
+      analyzed: analyzedCount,
+      storageErrors: storageErrors.length > 0 ? storageErrors : undefined
     });
 
   } catch (error) {
-    console.error('Scrape API error:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown server error'
     }, { status: 500 });
   }
+}
+
+// Add CORS headers
+export async function OPTIONS() {
+  return NextResponse.json({}, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }

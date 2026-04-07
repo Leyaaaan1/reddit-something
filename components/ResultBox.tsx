@@ -29,8 +29,24 @@ const ResultBox: React.FC = () => {
         setError(null);
 
         try {
-            const response = await axios.get<RedditPost[]>('/api/posts');
-            setPosts(response.data);
+            const response = await axios.get<{
+                success: boolean;
+                data: RedditPost[];
+                pagination?: { page: number; limit: number; total: number };
+            }>('/api/posts');
+
+
+            // Handle both old format (direct array) and new format (with pagination)
+            const postsData = Array.isArray(response.data)
+                ? response.data
+                : (response.data?.data || []);
+
+            if (!Array.isArray(postsData)) {
+                setPosts([]);
+                return;
+            }
+
+            setPosts(postsData);
         } catch (err) {
             if (axios.isAxiosError(err)) {
                 setError(err.response?.data?.error || err.message);

@@ -29,6 +29,7 @@ export interface ScrapeResponse {
     stored: number;
     analyzed: number;
     error?: string;
+    storageErrors?: Array<{ post_id: string; error: string }>;
 }
 
 export interface AnalyzeResponse {
