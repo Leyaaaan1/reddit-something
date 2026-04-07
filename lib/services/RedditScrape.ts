@@ -8,7 +8,6 @@ export class RedditScrape {
     private requestDelay = 2000;
 
     constructor() {
-        console.log('✓ Reddit Scraper initialized (RSS method)');
     }
 
     async scrapeRedditPosts(subreddits: string[], postsPerSubreddit: number = 5): Promise<RedditPost[]> {
@@ -19,7 +18,6 @@ export class RedditScrape {
                 const subreddit = subreddits[i].trim();
 
                 try {
-                    console.log(`🔍 Fetching r/${subreddit}...`);
 
                     // Use RSS feed instead of JSON API
                     const url = `${this.baseUrl}/r/${subreddit}/top.rss?t=week&limit=${postsPerSubreddit}`;
@@ -40,15 +38,11 @@ export class RedditScrape {
 
                     if (!response.ok) {
                         if (response.status === 404) {
-                            console.error(`❌ Subreddit r/${subreddit} not found (404)`);
                         } else if (response.status === 429) {
-                            console.error(`⚠️ Rate limited (429). Waiting 60s...`);
                             await this.delay(60000);
                             i--;
                         } else if (response.status === 403) {
-                            console.error(`❌ Access forbidden to r/${subreddit} (403)`);
                         } else {
-                            console.error(`❌ HTTP ${response.status} for r/${subreddit}`);
                         }
                         continue;
                     }
@@ -57,28 +51,22 @@ export class RedditScrape {
                     const posts = this.parseRSS(xmlText, subreddit);
 
                     allPosts.push(...posts.slice(0, postsPerSubreddit));
-                    console.log(`✅ Scraped ${posts.length} posts from r/${subreddit}`);
 
                     if (i < subreddits.length - 1) {
-                        console.log(`⏳ Waiting ${this.requestDelay / 1000}s before next request...`);
                         await this.delay(this.requestDelay);
                     }
 
                 } catch (error: any) {
                     if (error.name === 'AbortError') {
-                        console.error(`⏱️ Request timeout for r/${subreddit}`);
                     } else {
-                        console.error(`❌ Error scraping r/${subreddit}:`, error.message || error);
                     }
                     continue;
                 }
             }
 
-            console.log(`📊 Total posts scraped: ${allPosts.length}`);
             return allPosts;
 
         } catch (error: any) {
-            console.error('💥 Fatal error in scrapeRedditPosts:', error);
             return [];
         }
     }
@@ -123,7 +111,6 @@ export class RedditScrape {
                     created_at,
                 });
             } catch (error) {
-                console.warn('Failed to parse RSS item:', error);
                 continue;
             }
         }

@@ -1,63 +1,71 @@
 import { NextResponse } from 'next/server';
-import {supabase} from "../../../lib/supabase/Supabase";
+import { sql } from "../../../lib/neon/Neon";
 
 export async function GET() {
+    const healthStartTime = Date.now();
+
     try {
-        // Get total analyzed records
-        const { count: analyzedCount, error: analyzedError } = await supabase
-            .from('reddit_posts')
-            .select('*', { count: 'exact', head: true })
-            .not('analysis', 'is', null);
 
-        if (analyzedError) {
-            throw analyzedError;
-        }
+        // Get total analyzed records count
+        const analyzedResult = await sql`
+            SELECT COUNT(*) as count FROM reddit_posts WHERE analysis IS NOT NULL
+        `;
+        const analyzedCount = analyzedResult[0]?.count || 0;
 
-        // Get total records
-        const { count: totalCount, error: totalError } = await supabase
-            .from('reddit_posts')
-            .select('*', { count: 'exact', head: true });
+        // Get total records count
+        const totalResult = await sql`
+            SELECT COUNT(*) as count FROM reddit_posts
+        `;
+        const totalCount = totalResult[0]?.count || 0;
 
-        if (totalError) {
-            throw totalError;
-        }
-
-        // Get last analyzed post
-        const { data: lastAnalyzed, error: lastError } = await supabase
-            .from('reddit_posts')
-            .select('created_at, scraped_at, analysis')
-            .not('analysis', 'is', null)
-            .order('scraped_at', { ascending: false })
-            .limit(1);
-
-        if (lastError) {
-            throw lastError;
-        }
-
-        const lastAnalysisTime = lastAnalyzed && lastAnalyzed.length > 0
-            ? lastAnalyzed[0].scraped_at
+        // Get last analyzed post timestamp
+        const lastAnalyzedResult = await sql`
+            SELECT scraped_at
+            FROM reddit_posts
+            WHERE analysis IS NOT NULL
+            ORDER BY scraped_at DESC
+                LIMIT 1
+        `;
+        const lastAnalysisTime = lastAnalyzedResult.length > 0
+            ? lastAnalyzedResult[0].scraped_at
             : null;
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             status: 'healthy',
             database: 'connected',
             statistics: {
-                totalRecords: totalCount || 0,
-                analyzedRecords: analyzedCount || 0,
-                pendingAnalysis: (totalCount || 0) - (analyzedCount || 0),
+                totalRecords: totalCount,
+                analyzedRecords: analyzedCount,
+                pendingAnalysis: totalCount - analyzedCount,
                 lastAnalysisTimestamp: lastAnalysisTime
             },
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            responseTime: `${Date.now() - healthStartTime}ms`
         });
 
+        // Add cache headers
+        response.headers.set('Cache-Control', 'public, max-age=10');
+
+
+        return response;
+
     } catch (error) {
-        console.error('Health check error:', error);
 
         return NextResponse.json({
             status: 'unhealthy',
             database: 'error',
             error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
-        }, { status: 500 });
+        }, { status: 503 });
     }
+}
+
+export async function OPTIONS() {
+    return NextResponse.json({}, {
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+        },
+    });
 }

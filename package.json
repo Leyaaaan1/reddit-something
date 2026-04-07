@@ -1,6 +1,7 @@
 {
   "name": "challenge-saas",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
+    "@neondatabase/serverless": "^1.0.2",
     "axios": "^1.6.2",
     "dotenv": "^16.3.1",
     "next": "^16.0.1",
@@ -21,6 +22,7 @@
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.22",
+    "baseline-browser-mapping": "^2.10.16",
     "eslint": "^8.55.0",
     "eslint-config-next": "^14.0.4",
     "postcss": "^8.5.6",

@@ -25,7 +25,6 @@ const App: React.FC = () => {
                 setHealthStatus(response.data.statistics);
             }
         } catch (error) {
-            console.error('Failed to fetch health status:', error);
         } finally {
             setHealthLoading(false);
         }
