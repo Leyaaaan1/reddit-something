@@ -1,24 +1,22 @@
-import type { Metadata } from 'next'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
+import React from "react";
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-    title: 'Reddit Scraper & Analyzer',
-    description: 'Scrape Reddit posts and analyze them with Gemini AI',
-    keywords: ['reddit', 'scraper', 'analyzer', 'sentiment analysis', 'AI'],
-}
+    title: "Reddit Scraper & AI Analyzer",
+    description: "Free Reddit analytics tool with AI sentiment analysis",
+};
 
 export default function RootLayout({
                                        children,
                                    }: {
-    children: React.ReactNode
+    children: React.ReactNode;
 }) {
     return (
         <html lang="en">
         <body>
-            {children}
-            <Analytics />
+        {children}
         </body>
         </html>
-    )
+    );
 }

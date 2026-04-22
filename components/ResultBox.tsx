@@ -1,139 +1,114 @@
 // src/components/ResultBox.tsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import {RedditPost} from "./types";
-import {localStorageService} from "../lib/utils/LocalStorage";
+import { RedditPost } from './types';
+import { localStorageService } from '../lib/utils/LocalStorage';
 
 const ResultBox: React.FC = () => {
-    const [posts, setPosts] = useState<RedditPost[]>([]);
+    const [posts, setPosts]   = useState<RedditPost[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError]   = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'positive' | 'neutral' | 'negative'>('all');
 
     useEffect(() => {
-        // Initial fetch
         fetchPosts();
-
-        // Set up polling every 3 seconds for real-time updates
-        const interval = setInterval(() => {
-            fetchPosts(true); // Silent fetch (no loading state)
-        }, 3000);
-
-        // Cleanup interval on unmount
+        const interval = setInterval(() => fetchPosts(true), 3000);
         return () => clearInterval(interval);
     }, []);
 
-    const fetchPosts = async (silent: boolean = false) => {
-        if (!silent) {
-            setLoading(true);
-        }
+    const fetchPosts = async (silent = false) => {
+        if (!silent) setLoading(true);
         setError(null);
-
         try {
-            // Get posts from localStorage instead of API
             const postsData = localStorageService.getPosts();
-
-            if (!Array.isArray(postsData)) {
-                setPosts([]);
-                return;
-            }
-
-            setPosts(postsData);
-        } catch (err) {
+            setPosts(Array.isArray(postsData) ? postsData : []);
+        } catch {
             setError('Failed to fetch posts from local storage');
         } finally {
-            if (!silent) {
-                setLoading(false);
-            }
+            if (!silent) setLoading(false);
         }
     };
+
     const filteredPosts = posts.filter(post => {
         if (filter === 'all') return true;
-        // Only filter by sentiment if filter is not 'all' AND post has analysis
         if (!post.analysis) return false;
         return post.analysis.sentiment === filter;
     });
+
     const getSentimentStyle = (sentiment: string) => {
         switch (sentiment) {
-            case 'positive':
-                return { color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0' };
-            case 'negative':
-                return { color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca' };
-            default:
-                return { color: '#4b5563', background: '#f9fafb', border: '1px solid #e5e7eb' };
+            case 'positive': return { color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0' };
+            case 'negative': return { color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca' };
+            default:         return { color: 'var(--text-secondary)', background: 'var(--bg-card-alt)', border: '1px solid var(--border)' };
         }
     };
 
+    const FILTERS = ['all', 'positive', 'neutral', 'negative'] as const;
+
     return (
         <div style={{
-            background: 'white',
-            borderRadius: '0.5rem',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            padding: '1.5rem'
+            background: 'var(--bg-card)',
+            borderRadius: '0.75rem',
+            boxShadow: 'var(--shadow)',
+            border: '1px solid var(--border)',
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
         }}>
+            {/* Header row */}
             <div style={{
                 display: 'flex',
-                flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: '1.5rem',
+                marginBottom: '1rem',
                 flexWrap: 'wrap',
-                gap: '1rem'
+                gap: '0.75rem'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <div style={{
                         background: '#d1fae5',
-                        padding: '0.5rem',
+                        padding: '0.4rem',
                         borderRadius: '0.5rem',
-                        marginRight: '0.75rem',
                         position: 'relative'
                     }}>
-                        <svg style={{ width: '1.5rem', height: '1.5rem', color: '#10b981' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg style={{ width: '1.25rem', height: '1.25rem', color: '#10b981' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        {/* Live indicator */}
                         <span style={{
-                            position: 'absolute',
-                            top: '0.25rem',
-                            right: '0.25rem',
-                            width: '0.5rem',
-                            height: '0.5rem',
-                            background: '#10b981',
-                            borderRadius: '50%',
+                            position: 'absolute', top: '0.2rem', right: '0.2rem',
+                            width: '0.4rem', height: '0.4rem',
+                            background: '#10b981', borderRadius: '50%',
                             animation: 'pulse 2s ease-in-out infinite'
-                        }}></span>
+                        }} />
                     </div>
                     <div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1f2937' }}>
-                            Analysis Results
-                            <span style={{
-                                fontSize: '0.75rem',
-                                color: '#10b981',
-                                marginLeft: '0.5rem',
-                                fontWeight: 'normal'
-                            }}>● Live</span>
+                        <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
+                            Analysis Results{' '}
+                            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 'normal' }}>● Live</span>
                         </h2>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
                             Auto-updating every 3 seconds
                         </p>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {['all', 'positive', 'neutral', 'negative'].map((f) => (
+                {/* Filter buttons */}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {FILTERS.map(f => (
                         <button
                             key={f}
-                            onClick={() => setFilter(f as any)}
+                            onClick={() => setFilter(f)}
                             style={{
-                                padding: '0.5rem 1rem',
+                                padding: '0.375rem 0.875rem',
                                 borderRadius: '0.5rem',
-                                fontSize: '0.875rem',
+                                fontSize: '0.8125rem',
                                 fontWeight: '500',
                                 border: 'none',
                                 cursor: 'pointer',
-                                background: filter === f ? '#2563eb' : '#f3f4f6',
-                                color: filter === f ? 'white' : '#374151',
-                                transition: 'all 0.2s'
+                                background: filter === f ? '#2563eb' : 'var(--bg-card-alt)',
+                                color: filter === f ? 'white' : 'var(--text-secondary)',
+                                transition: 'background 0.15s, color 0.15s'
                             }}
                         >
                             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -142,233 +117,170 @@ const ResultBox: React.FC = () => {
                 </div>
             </div>
 
-            {loading ? (
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '3rem 0',
-                    color: '#4b5563'
-                }}>
+            {/* Content area */}
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                {loading ? (
                     <div style={{
-                        width: '3rem',
-                        height: '3rem',
-                        border: '3px solid #e5e7eb',
-                        borderTopColor: '#2563eb',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                        marginBottom: '1rem'
-                    }}></div>
-                    <p>Loading posts...</p>
-                </div>
-            ) : error ? (
-                <div style={{
-                    padding: '1rem',
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    borderRadius: '0.5rem'
-                }}>
-                    <p style={{ color: '#991b1b', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{error}</p>
-                    <button
-                        onClick={() => fetchPosts()}
-                        style={{
-                            fontSize: '0.875rem',
-                            color: '#dc2626',
-                            fontWeight: '500',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            textDecoration: 'underline'
-                        }}
-                    >
-                        Try again
-                    </button>
-                </div>
-            ) : filteredPosts.length === 0 ? (
-                <div style={{
-                    textAlign: 'center',
-                    padding: '3rem 0',
-                    color: '#6b7280'
-                }}>
-                    <p>No analyzed posts found. Start by scraping and analyzing some posts!</p>
-                </div>
-            ) : (
-                <div style={{
-                    maxHeight: '24rem',
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem'
-                }}>
-                    {filteredPosts.map((post) => (
-                        <div key={post.post_id} style={{
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '0.5rem',
-                            padding: '1rem',
-                            transition: 'all 0.3s ease',
-                            animation: 'fadeIn 0.5s ease'
-                        }}
-                             onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)'}
-                             onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
-                        >
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'row',
-                                alignItems: 'flex-start',
-                                justifyContent: 'space-between',
-                                marginBottom: '0.5rem',
-                                gap: '1rem',
-                                flexWrap: 'wrap'
-                            }}>
-                                <h3 style={{
-                                    fontWeight: '600',
-                                    color: '#1f2937',
-                                    flex: 1,
-                                    margin: 0
-                                }}>
-                                    {post.title}
-                                </h3>
-                                {post.analysis && (
-                                    <span style={{
-                                        ...getSentimentStyle(post.analysis.sentiment),
-                                        padding: '0.25rem 0.75rem',
-                                        borderRadius: '9999px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: '500',
-                                        whiteSpace: 'nowrap'
-                                    }}>
-                                        {post.analysis.sentiment}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                fontSize: '0.875rem',
-                                color: '#6b7280',
-                                marginBottom: '0.75rem',
-                                flexWrap: 'wrap',
-                                gap: '0.5rem'
-                            }}>
-                                <span>r/{post.source}</span>
-                                <span>•</span>
-                                <span>by u/{post.author}</span>
-                                <span>•</span>
-                                <span>{post.score} points</span>
-                                <span>•</span>
-                                <span>{post.num_comments} comments</span>
-                            </div>
-
-                            {post.analysis && (
-                                <div style={{
-                                    background: '#f9fafb',
-                                    borderRadius: '0.5rem',
-                                    padding: '0.75rem',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    <p style={{
-                                        fontSize: '0.875rem',
-                                        color: '#374151',
-                                        marginBottom: '0.5rem'
-                                    }}>
-                                        {post.analysis.summary}
-                                    </p>
-                                    <div style={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: '0.5rem'
-                                    }}>
-                                        {post.analysis.keywords.map((keyword, idx) => (
-                                            <span key={idx} style={{
-                                                padding: '0.25rem 0.5rem',
-                                                background: '#dbeafe',
-                                                color: '#1e40af',
-                                                fontSize: '0.75rem',
-                                                borderRadius: '0.25rem'
-                                            }}>
-                                                {keyword}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <a
-                                href={post.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        padding: '3rem 0', color: 'var(--text-muted)'
+                    }}>
+                        <div style={{
+                            width: '2.5rem', height: '2.5rem',
+                            border: '3px solid var(--border)',
+                            borderTopColor: '#2563eb',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            marginBottom: '0.75rem'
+                        }} />
+                        <p style={{ margin: 0 }}>Loading posts…</p>
+                    </div>
+                ) : error ? (
+                    <div style={{
+                        padding: '1rem', background: '#fef2f2',
+                        border: '1px solid #fecaca', borderRadius: '0.5rem'
+                    }}>
+                        <p style={{ color: '#991b1b', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{error}</p>
+                        <button onClick={() => fetchPosts()} style={{
+                            fontSize: '0.875rem', color: '#dc2626', fontWeight: '500',
+                            background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline'
+                        }}>Try again</button>
+                    </div>
+                ) : filteredPosts.length === 0 ? (
+                    <div style={{
+                        padding: '3rem 1rem', color: 'var(--text-muted)',
+                        textAlign: 'center', fontSize: '0.9rem'
+                    }}>
+                        No analyzed posts found. Start by scraping and analyzing some posts!
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                        {filteredPosts.map(post => (
+                            <div
+                                key={post.post_id}
                                 style={{
-                                    fontSize: '0.875rem',
-                                    color: '#2563eb',
-                                    textDecoration: 'none'
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '0.625rem',
+                                    padding: '1rem',
+                                    background: 'var(--bg-card)',
+                                    animation: 'fadeIn 0.4s ease'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#1e40af'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = '#2563eb'}
+                                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)')}
+                                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                             >
-                                View on Reddit →
-                            </a>
-                        </div>
-                    ))}
-                </div>
-            )}
+                                {/* Title + sentiment badge */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'flex-start',
+                                    justifyContent: 'space-between', gap: '0.75rem',
+                                    marginBottom: '0.4rem', flexWrap: 'wrap'
+                                }}>
+                                    <h3 style={{
+                                        fontWeight: '600', color: 'var(--text-primary)',
+                                        flex: 1, margin: 0, fontSize: '0.9375rem', lineHeight: '1.4'
+                                    }}>
+                                        {post.title}
+                                    </h3>
+                                    {post.analysis && (
+                                        <span style={{
+                                            ...getSentimentStyle(post.analysis.sentiment),
+                                            padding: '0.2rem 0.625rem',
+                                            borderRadius: '9999px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: '600',
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0
+                                        }}>
+                                            {post.analysis.sentiment}
+                                        </span>
+                                    )}
+                                </div>
 
+                                {/* Meta row */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center',
+                                    fontSize: '0.8rem', color: 'var(--text-muted)',
+                                    marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.4rem'
+                                }}>
+                                    <span>r/{post.source}</span>
+                                    <span>·</span>
+                                    <span>u/{post.author}</span>
+                                    <span>·</span>
+                                    <span>{post.score} pts</span>
+                                    <span>·</span>
+                                    <span>{post.num_comments} comments</span>
+                                </div>
+
+                                {/* Analysis block */}
+                                {post.analysis && (
+                                    <div style={{
+                                        background: 'var(--bg-card-alt)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '0.5rem',
+                                        padding: '0.75rem',
+                                        marginBottom: '0.625rem'
+                                    }}>
+                                        <p style={{
+                                            fontSize: '0.8125rem', color: 'var(--text-secondary)',
+                                            marginBottom: '0.5rem', lineHeight: '1.6'
+                                        }}>
+                                            {post.analysis.summary}
+                                        </p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                            {post.analysis.keywords.map((kw, idx) => (
+                                                <span key={idx} style={{
+                                                    padding: '0.2rem 0.5rem',
+                                                    background: 'var(--tag-bg)',
+                                                    color: 'var(--tag-text)',
+                                                    fontSize: '0.7rem',
+                                                    borderRadius: '0.25rem',
+                                                    fontWeight: '500'
+                                                }}>
+                                                    {kw}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <a
+                                    href={post.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        fontSize: '0.8125rem', color: 'var(--text-link)',
+                                        textDecoration: 'none', fontWeight: '500'
+                                    }}
+                                >
+                                    View on Reddit →
+                                </a>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Footer row */}
             <div style={{
-                marginTop: '1rem',
+                marginTop: '0.75rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: '0.875rem',
-                color: '#4b5563'
+                fontSize: '0.8125rem',
+                color: 'var(--text-muted)'
             }}>
-                <span>Showing {filteredPosts.length} posts</span>
+                <span>Showing {filteredPosts.length} of {posts.length} posts</span>
                 <button
                     onClick={() => fetchPosts()}
                     style={{
-                        color: '#2563eb',
-                        fontWeight: '500',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer'
+                        color: 'var(--text-link)', fontWeight: '500',
+                        background: 'none', border: 'none', cursor: 'pointer'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#1e40af'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#2563eb'}
                 >
                     ↻ Refresh
                 </button>
             </div>
-
-            <style>{`
-                @keyframes pulse {
-                    0%, 100% {
-                        opacity: 1;
-                    }
-                    50% {
-                        opacity: 0.5;
-                    }
-                }
-                
-                @keyframes spin {
-                    from {
-                        transform: rotate(0deg);
-                    }
-                    to {
-                        transform: rotate(360deg);
-                    }
-                }
-                
-                @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-            `}</style>
         </div>
     );
 };

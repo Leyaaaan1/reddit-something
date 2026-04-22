@@ -19,22 +19,79 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background: linear-gradient(to bottom, #f9fafb, #ffffff);
-  color: #000000;
-  min-height: 100vh;
+/* ── Light mode tokens ── */
+:root {
+  --bg-page:        #f3f4f6;
+  --bg-card:        #ffffff;
+  --bg-card-alt:    #f9fafb;
+  --bg-input:       #ffffff;
+  --border:         #e5e7eb;
+  --border-focus:   #2563eb;
+  --text-primary:   #111827;
+  --text-secondary: #4b5563;
+  --text-muted:     #6b7280;
+  --text-link:      #2563eb;
+  --banner-bg:      #eff6ff;
+  --banner-border:  #bfdbfe;
+  --banner-title:   #1e3a8a;
+  --banner-text:    #1e40af;
+  --tag-bg:         #dbeafe;
+  --tag-text:       #1e40af;
+  --warn-bg:        #fef3c7;
+  --warn-border:    #fbbf24;
+  --warn-text:      #92400e;
+  --warn-sub:       #78350f;
+  --header-bg:      #1a1a1a;
+  --footer-bg:      #1f2937;
+  --shadow:         0 1px 3px rgba(0,0,0,0.10);
 }
 
-/* Ensure proper rendering of gradients */
-.bg-gradient-to-r {
-  background-image: linear-gradient(to right, var(--tw-gradient-stops));
+/* ── Dark mode tokens ── */
+[data-theme="dark"] {
+  --bg-page:        #0f172a;
+  --bg-card:        #1e293b;
+  --bg-card-alt:    #0f172a;
+  --bg-input:       #1e293b;
+  --border:         #334155;
+  --border-focus:   #3b82f6;
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+  --text-link:      #60a5fa;
+  --banner-bg:      #1e3a5f;
+  --banner-border:  #1d4ed8;
+  --banner-title:   #bfdbfe;
+  --banner-text:    #93c5fd;
+  --tag-bg:         #1e3a5f;
+  --tag-text:       #93c5fd;
+  --warn-bg:        #292524;
+  --warn-border:    #92400e;
+  --warn-text:      #fcd34d;
+  --warn-sub:       #fbbf24;
+  --header-bg:      #0f172a;
+  --footer-bg:      #020617;
+  --shadow:         0 1px 3px rgba(0,0,0,0.40);
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
 }
 
 /* Fix for spinning loader animation */
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-spin {
