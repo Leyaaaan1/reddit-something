@@ -19,6 +19,9 @@ export const metadata: Metadata = {
     ],
     authors: [{ name: "Lean Paninsoro" }],
     robots: { index: true, follow: true },
+    verification: {
+        google: "8rTrvgBFxYQ9tI24yXl7UpKQokWxQxkElcM4fJ0kg3E",  // ← your code
+    },
     alternates: {
         canonical: "https://reddit-something.vercel.app/",
     },
