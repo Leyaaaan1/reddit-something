@@ -62,7 +62,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
         try {
             localStorageService.clearPosts();
             try {
-                await axios.delete('/api/clear', { headers: { 'x-admin-key': process.env.NEXT_PUBLIC_ADMIN_KEY || '' } });
+                await axios.delete('/api/clear', { headers: { 'x-admin-key': 'admin-secret' } });
             } catch { /* db clear optional */ }
             addLog('✓ Posts cleared from local storage', 'success', { service: 'Local Storage', operation: 'clear_complete' });
             alert('All posts cleared!');
