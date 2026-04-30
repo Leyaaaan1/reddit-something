@@ -6,7 +6,7 @@ const validateAdminKey = (request: Request): boolean => {
     const apiKey = request.headers.get('x-admin-key');
     const expectedKey = process.env.ADMIN_API_KEY;
 
-    if (!expectedKey) {
+    if (!expectedKey || !apiKey) {
         return false;
     }
 
