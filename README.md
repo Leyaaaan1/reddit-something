@@ -1,77 +1,97 @@
 # Reddit Analytics Platform
 
-A hobby application that scrapes Reddit posts, analyzes them using AI, and stores results in your browser's local storage for instant access.
+A free tool that scrapes Reddit posts and uses AI to tell you what people are actually saying — sentiment, summaries, and key topics — with everything kept private in your own browser.
 
-## 🎯 What is This App?
+> ⚠️ **Important note:** This project fetches data through Reddit's *unofficial*, undocumented `.json` endpoints (not Reddit's official API). Reddit deprecated unauthenticated access to these endpoints in May 2026, so this method may be unreliable, rate-limited, or blocked entirely depending on when you run it. It is not endorsed by or affiliated with Reddit, and using it may go against Reddit's Terms of Service. Treat this as a personal/educational project rather than a production-ready tool. For a compliant, long-term solution, use [Reddit's official API](https://www.reddit.com/dev/api/) with OAuth.
 
-This app lets you:
-- **Scrape Reddit** - Fetch trending posts from multiple subreddits
-- **Analyze with AI** - Use Google Gemini to extract sentiment, summary, and keywords
-- **View Results** - See all analyzed posts in a clean, filterable interface
-- **Stay Private** - All data is stored locally in your browser (no server storage)
+## What Does This App Do?
 
-Each user gets their own isolated data. Your posts won't interfere with other users' data.
+In plain terms:
 
-## 📦 Tech Stack
+- **Scrape Reddit** — Pull recent posts from any public subreddit(s).
+- **Analyze with AI** — Google Gemini reads each post and returns its sentiment (positive/neutral/negative), a short summary, and key topics/keywords.
+- **View & Filter Results** — Browse everything in a clean dashboard, filterable by sentiment, updating automatically.
+- **Stay Private** — Nothing is stored on a server. All data lives in your browser only, so it's yours alone.
 
-- **Frontend**: Next.js 14 (App Router) + TypeScript
-- **Storage**: Browser LocalStorage (per-user data)
-- **AI Analysis**: Google Gemini AI (Free Tier)
-- **Data Source**: Reddit Public JSON API
-- **Hosting**: Vercel
+No Reddit account, login, or official API key is needed to scrape. You only need a free Google Gemini API key for the AI analysis step.
 
-## 🔄 Workflow Explanation
+## Who Is This For?
 
-### End-to-End Flow
+- Marketers and SEO professionals researching community sentiment
+- Content strategists looking for trending keywords
+- Anyone curious about what a subreddit is saying about a topic
 
-**1. Scraping Reddit Posts**
-- User enters subreddit names and number of posts
-- App fetches from Reddit's public API (no auth required)
-- Posts are scraped and returned by backend
+## Tech Stack
 
-**2. Storing in Local Memory**
-- Posts are saved to **browser's localStorage**
-- Each user has their own isolated storage
-- Data persists even after page refresh
-- Clearing data only affects current user
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14 (App Router) + TypeScript |
+| Data Source | Reddit's unofficial `.json` endpoints |
+| AI Analysis | Google Gemini AI (free tier) |
+| Storage | Browser localStorage (no database) |
+| Hosting | Vercel |
 
-**3. AI Analysis**
-- Gemini API analyzes post title + content
-- Extracts: sentiment (positive/neutral/negative), summary, keywords
-- Results are stored alongside each post
-- Rate limited to 30 requests/minute (free tier)
+## How It Works
 
-**4. Displaying Results**
-- Posts are fetched from localStorage
-- Filtered by sentiment or shown all
-- Real-time updates every 3 seconds
-- Shows metadata: subreddit, author, score, analysis results
+**1. You enter subreddits**
+Type in one or more subreddit names, set how many posts to pull per subreddit, and choose whether to clear old data first.
 
-**5. Data Management**
-- **Clear All** - Removes all posts from your browser storage
-- **Multiple Users** - Each browser/incognito session has separate data
-- **No Server Conflicts** - Your data never interferes with other users
+**2. The app scrapes Reddit**
+It fetches posts from Reddit's unofficial `.json` endpoints. No login is required, but this method is not guaranteed to keep working (see disclaimer above).
 
-## 🛠️ Setup Instructions
+**3. Posts are saved to your browser**
+Each post is stored in your browser's localStorage. This means your data stays on your device, persists across refreshes, and is never shared with other users.
 
-```bash
-# 1. Clone repository
-git clone [your-repo]
-cd [project-name]
+**4. Gemini AI analyzes each post**
+Every post's title and content is sent to Gemini, which returns:
+- Sentiment (positive, neutral, or negative)
+- A short plain-English summary
+- Key topics/keywords
 
-# 2. Install dependencies
-npm install
+(Limited to 30 requests per minute on the free tier.)
 
-# 3. Create .env file with:
-DATABASE_URL=your_neon_database_url
-ADMIN_API_KEY=your_secret_admin_key
-NEXT_PUBLIC_ADMIN_KEY=your_secret_admin_key
-gemini_api_key=your_gemini_api_key
-REDDIT_USER_AGENT="windows:my-reddit-scraper:1.0"
+**5. Results appear in a live dashboard**
+Filter by sentiment, watch new results stream in automatically every few seconds, and clear your data anytime with one click.
 
-# 4. Run development server
-npm run dev
+## Setup Guide
 
-# 5. Open http://localhost:3000
+### Requirements
+- [Node.js](https://nodejs.org) installed on your computer
+- A free [Google Gemini API key](https://ai.google.dev/)
 
+### Steps
 
+1. **Download the project**
+   ```bash
+   git clone [your-repo-url]
+   cd [project-name]
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Add your API key**
+
+   Create a file named `.env.local` in the project root and add:
+   ```bash
+   GEMINI_API_KEY=your_gemini_api_key
+   REDDIT_USER_AGENT="windows:my-reddit-scraper:1.0"
+   ```
+
+4. **Start the app**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open it in your browser**
+   Go to [http://localhost:3000](http://localhost:3000)
+
+That's it — no database setup required.
+
+## Notes
+
+- Data is isolated per browser/session — using an incognito window or a different browser gives you a fresh, empty dataset.
+- Clearing data only affects your own session; it never touches anyone else's.
+- Reddit's unofficial `.json` access may stop working at any time without notice — this project is shared as-is, for learning purposes.

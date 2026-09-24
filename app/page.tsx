@@ -127,43 +127,7 @@ const SEOSection: React.FC = () => {
                 </div>
             </div>
 
-            {/* Who is this for — always dark gradient, no change needed */}
-            <div style={{ padding: '4rem 1.5rem 0' }}>
-                <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-                    <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)', borderRadius: '1rem', padding: '2.5rem 2rem', color: 'white' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#f1f5f9', marginBottom: '0.75rem', letterSpacing: '-0.01em' }}>
-                            Who Should Use This Tool?
-                        </h2>
-                        <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.7', marginBottom: '1.75rem', maxWidth: '640px' }}>
-                            Reddit is one of the most honest sources of unfiltered audience opinion on the internet. This tool makes that data instantly accessible and AI-readable.
-                        </p>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                            {[
-                                { role: "SEO Specialists", use: "Extract real long-tail keywords and questions your audience is already typing into Google." },
-                                { role: "Digital Marketers", use: "Monitor brand mentions, track competitor sentiment, and spot trends before they peak." },
-                                { role: "Content Strategists", use: "Find content gaps and understand which topics drive the most engagement in your niche." },
-                                { role: "Product Managers", use: "Discover raw user feedback, pain points, and feature requests from niche communities." },
-                                { role: "Researchers", use: "Collect and classify social media text data at scale without scraping infrastructure." },
-                                { role: "Indie Hackers", use: "Validate ideas by analyzing community sentiment around problems before you build." },
-                            ].map((item, i) => (
-                                <div key={i} style={{
-                                    background: 'rgba(255,255,255,0.06)',
-                                    borderRadius: '0.625rem',
-                                    padding: '1rem 1.125rem',
-                                    border: '1px solid rgba(255,255,255,0.09)'
-                                }}>
-                                    <div style={{ fontWeight: '700', fontSize: '0.8125rem', color: '#7dd3fc', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                        {item.role}
-                                    </div>
-                                    <div style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.55' }}>
-                                        {item.use}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
             {/* Tech stack */}
             <div style={{ padding: '4rem 1.5rem 0' }}>
@@ -174,12 +138,12 @@ const SEOSection: React.FC = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center' }}>
                         {[
                             { label: "Next.js 14 (App Router)", color: "#94a3b8" },
-                            { label: "TypeScript",              color: "#3178c6" },
-                            { label: "Google Gemini AI",        color: "#4285f4" },
-                            { label: "Reddit Public JSON API",  color: "#ff4500" },
-                            { label: "Browser localStorage",    color: "#16a34a" },
-                            { label: "Vercel",                  color: "#94a3b8" },
-                            { label: "Tailwind CSS",            color: "#0ea5e9" },
+                            { label: "TypeScript", color: "#3178c6" },
+                            { label: "Google Gemini AI", color: "#4285f4" },
+                            { label: "Reddit Public JSON API", color: "#ff4500" },
+                            { label: "Browser localStorage", color: "#16a34a" },
+                            { label: "Vercel", color: "#94a3b8" },
+                            { label: "Tailwind CSS", color: "#0ea5e9" },
                         ].map((t, i) => (
                             <span key={i} style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
@@ -223,9 +187,9 @@ const SEOSection: React.FC = () => {
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem',
                                     }}
                                 >
-                        <span style={{ fontSize: '0.9375rem', fontWeight: '600', color: 'var(--text-primary)', lineHeight: '1.4' }}>
-                            {item.q}
-                        </span>
+                                    <span style={{ fontSize: '0.9375rem', fontWeight: '600', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+                                        {item.q}
+                                    </span>
                                     <span style={{
                                         fontSize: '1.25rem', color: 'var(--text-link)', flexShrink: 0, fontWeight: '300',
                                         display: 'inline-block', lineHeight: '1',
