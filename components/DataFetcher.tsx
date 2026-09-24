@@ -17,15 +17,15 @@ interface CurrentProcessingState {
 }
 
 const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
-    const [loading, setLoading]                 = useState(false);
-    const [clearing, setClearing]               = useState(false);
-    const [error, setError]                     = useState<string | null>(null);
-    const [result, setResult]                   = useState<ScrapeResponse | null>(null);
-    const [subreddits, setSubreddits]           = useState('socialmedia,marketing,SocialMediaMarketing,digital_marketing,socialmediamanagers');
+    const [loading, setLoading] = useState(false);
+    const [clearing, setClearing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [result, setResult] = useState<ScrapeResponse | null>(null);
+    const [subreddits, setSubreddits] = useState('Philippines');
     const [postsPerSubreddit, setPostsPerSubreddit] = useState(5);
     const [clearBeforeScrape, setClearBeforeScrape] = useState(true);
-    const [processLogs, setProcessLogs]         = useState<ProcessLog[]>([]);
-    const [showLogs, setShowLogs]               = useState(false);
+    const [processLogs, setProcessLogs] = useState<ProcessLog[]>([]);
+    const [showLogs, setShowLogs] = useState(false);
     const [currentProcessing, setCurrentProcessing] = useState<CurrentProcessingState>({});
 
     const addLog = (
@@ -223,7 +223,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                 <div style={{ background: '#dbeafe', padding: '0.4rem', borderRadius: '0.5rem' }}>
                     <svg style={{ width: '1.25rem', height: '1.25rem', color: '#2563eb' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                 </div>
                 <div>
