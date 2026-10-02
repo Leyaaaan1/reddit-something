@@ -24,10 +24,11 @@ export interface AnalysisResult {
 
 export interface ScrapeResponse {
     success: boolean;
-    message: string;
+    message?: string;
     scraped: number;
-    stored: number;
-    analyzed: number;
+    stored?: number;
+    analyzed?: number;
+    posts?: RedditPost[];
     error?: string;
     storageErrors?: Array<{ post_id: string; error: string }>;
 }

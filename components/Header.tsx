@@ -26,10 +26,10 @@ const Header: React.FC<HeaderProps> = ({ status, loading, darkMode, onToggleDark
                     {/* Title block */}
                     <div>
                         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.2rem' }}>
-                            Reddit Scraper &amp; Analyzer
+                            Reddit Something
                         </h1>
                         <p style={{ color: '#93c5fd', fontSize: '0.8125rem' }}>
-                            Reddit custom scrape → Gemini AI Pipeline
+                            Reddit posts → Gemini AI analysis
                         </p>
                     </div>
 
@@ -54,8 +54,8 @@ const Header: React.FC<HeaderProps> = ({ status, loading, darkMode, onToggleDark
                             }}>
                                 {[
                                     { label: 'Total Posts', value: status.totalRecords },
-                                    { label: 'Analyzed',   value: status.analyzedRecords },
-                                    { label: 'Pending',    value: status.pendingAnalysis },
+                                    { label: 'Analyzed', value: status.analyzedRecords },
+                                    { label: 'Pending', value: status.pendingAnalysis },
                                 ].map((s, i) => (
                                     <div key={i} style={{
                                         textAlign: 'center',

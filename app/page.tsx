@@ -8,23 +8,23 @@ import DataFetcher from "../components/DataFetcher";
 import ResultBox from "../components/ResultBox";
 import Footer from "../components/Footer";
 import ProcessLogger, { ProcessLog } from "../components/ProcessLogger";
-
+import { localStorageService } from "../lib/utils/LocalStorage";
 // ─── SEO Data ────────────────────────────────────────────────────────────────
 
 const FAQ_ITEMS = [
-    { q: "What is the Reddit Analytics Platform?", a: "It's a free hobby web app that scrapes posts from any public subreddit using Reddit's public JSON API (no login required), analyzes them with Google Gemini AI, and stores everything in your browser's localStorage — so your data is private, isolated, and persists even after a page refresh." },
+    { q: "What is the Reddit Analytics Platform?", a: "It's a free hobby web app that scrapes posts from any public subreddit using Reddit's public RSS feeds (no login required), analyzes them with Google Gemini AI, and stores everything in your browser's localStorage — so your data is private, isolated, and persists even after a page refresh." },
     { q: "How does the Reddit sentiment analysis work?", a: "After scraping, each post's title and content is sent to Google Gemini AI (free tier). Gemini extracts the sentiment (positive, neutral, or negative), generates a plain-English summary, and pulls out the top keywords. Results are saved back to localStorage and appear live in the results panel, which auto-refreshes every 3 seconds." },
     { q: "Where is my scraped data stored?", a: "All data is stored exclusively in your browser's localStorage — not on any server. Each browser session (or incognito window) gets its own completely isolated dataset. Your posts will never interfere with another user's data, and clearing your data only affects your own session." },
     { q: "Which subreddits can I scrape and analyze?", a: "Any public subreddit. You enter subreddit names as a comma-separated list (e.g. socialmedia, marketing, digital_marketing). You can scrape up to 50 posts per subreddit. Popular choices include r/marketing, r/SocialMediaMarketing, r/entrepreneur, r/startups, and r/ecommerce." },
-    { q: "Does this app require a Reddit account or API key?", a: "No Reddit account or API key is needed. The app uses Reddit's public JSON API endpoint which is freely accessible without authentication. All you need is a Google Gemini API key for the AI analysis step." },
-    { q: "Is the Reddit scraper tool free to use?", a: "Yes, completely free. The app is hosted on Vercel and uses Google Gemini AI on the free tier, which is rate-limited to 30 requests per minute. There's no paywall, no sign-up, and no usage fees." },
+    { q: "Does this app require a Reddit account or API key?", a: "No Reddit account or API key is needed. The app uses Reddit's public RSS feeds endpoint which is freely accessible without authentication. All you need is a Google Gemini API key for the AI analysis step." },
+    { q: "Is the Reddit fetcher tool free to use?", a: "Yes, completely free. The app is hosted on Vercel and uses Google Gemini AI on the free tier, which is rate-limited to 30 requests per minute. There's no paywall, no sign-up, and no usage fees." },
     { q: "What can I use Reddit post analysis for?", a: "Great use cases include: SEO keyword research (find real questions your audience is asking), content gap analysis, brand monitoring, competitor research, social listening, and identifying trending discussions in your niche." },
-    { q: "How do I clear my scraped data?", a: "Click the red 'Clear All' button in the scraper panel. This removes all posts from your browser's localStorage. You can also enable 'Clear old data before scraping' to automatically wipe previous results before each new scrape session." },
+    { q: "How do I clear my scraped data?", a: "Click the red 'Clear All' button in the fetcher panel. This removes all posts from your browser's localStorage. You can also enable 'Clear old data before scraping' to automatically wipe previous results before each new scrape session." },
     { q: "Can multiple people use the app at the same time?", a: "Yes. Because data is stored in each user's own browser localStorage rather than a shared server database, there are zero conflicts between users. Each person's session is completely independent." },
 ];
 
 const FEATURES = [
-    { icon: "", title: "Reddit Public API Scraping", desc: "Fetches posts directly from Reddit's public JSON API — no authentication, no API key, no rate-limit issues on the scraping side." },
+    { icon: "", title: "Reddit RSS Feeds", desc: "Fetches posts directly from Reddit's public RSS feeds — no authentication, no API key, no rate-limit issues on the scraping side." },
     { icon: "", title: "Google Gemini AI Analysis", desc: "Every scraped post is analyzed by Gemini AI for sentiment classification, keyword extraction, and a concise plain-English summary." },
     { icon: "", title: "100% Private — Browser localStorage", desc: "Your data never touches a shared server. Everything is stored in your own browser's localStorage. Completely isolated, even from other users on the same app." },
     { icon: "", title: "Live Filterable Results", desc: "Filter analyzed posts by Positive, Neutral, or Negative sentiment. Results auto-refresh every 3 seconds as new posts finish analysis." },
@@ -34,7 +34,7 @@ const FEATURES = [
 
 const HOW_IT_WORKS = [
     { step: "01", title: "Enter Subreddits", desc: "Type any public subreddit names separated by commas. Set how many posts per subreddit you want (up to 50). Choose whether to clear old data first." },
-    { step: "02", title: "Scrape Reddit Posts", desc: "The app hits Reddit's public JSON API to fetch the latest posts. No login or API key needed. Progress is shown live in the Process Log panel." },
+    { step: "02", title: "Fetch Reddit Posts", desc: "The app hits Reddit's public JSON API to fetch the latest posts. No login or API key needed. Progress is shown live in the Process Log panel." },
     { step: "03", title: "Gemini AI Analysis", desc: "Each post's title and content is sent to Google Gemini AI. It returns the sentiment, a summary, and keywords. Rate-limited to 30 req/min on the free tier." },
     { step: "04", title: "View & Filter Results", desc: "Analyzed posts appear on the right panel, filterable by All / Positive / Neutral / Negative. Results auto-refresh every 3 seconds as analysis completes." },
 ];
@@ -50,12 +50,12 @@ const SEOSection: React.FC = () => {
             <div style={{ borderTop: '1px solid var(--border)', padding: '4rem 1.5rem 0' }}>
                 <div style={{ maxWidth: '1280px', margin: '0 auto', textAlign: 'center' }}>
                     <h2 style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: '1.25', letterSpacing: '-0.02em' }}>
-                        Free Reddit Scraper &amp; AI Sentiment Analyzer
+                        Free Reddit Something &amp; AI Sentiment Analyzer
                     </h2>
                     <p style={{ maxWidth: '760px', margin: '0 auto 1rem', color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.8' }}>
                         A privacy-first Reddit analytics tool built with <strong>Next.js</strong>,{' '}
                         <strong>Google Gemini AI</strong>, and browser <strong>localStorage</strong>.
-                        Scrape any public subreddit in seconds, get AI-powered sentiment scores,
+                        Pull posts from any public subreddit in seconds, get AI-powered sentiment scores,
                         keyword clusters, and plain-English summaries — all stored locally in your
                         browser with zero server-side data retention.
                     </p>
@@ -170,7 +170,7 @@ const SEOSection: React.FC = () => {
                         Frequently Asked Questions
                     </h2>
                     <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '2rem' }}>
-                        Everything you need to know about the Reddit scraper and AI analysis pipeline.
+                        Everything you need to know about the Reddit fetcher and AI analysis pipeline.
                     </p>
                     <div style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', overflow: 'hidden' }}>
                         {FAQ_ITEMS.map((item, i) => (
@@ -297,7 +297,7 @@ const SEOSection: React.FC = () => {
                             Start Analyzing Reddit Posts in Seconds — No Sign-Up Required
                         </h2>
                         <p style={{ fontSize: '0.9rem', color: 'var(--banner-text)', margin: '0 auto', maxWidth: '560px', lineHeight: '1.7' }}>
-                            Enter your subreddits above, set your post limit, and hit <strong>Start Scraping</strong>.
+                            Enter your subreddits above, set your post limit, and hit <strong>Fetch Posts</strong>.
                             Google Gemini AI will classify every post in real time. Your data stays private in your browser — always.
                         </p>
                     </div>
@@ -341,17 +341,22 @@ const App: React.FC = () => {
 
     useEffect(() => {
         fetchHealthStatus();
+        const id = setInterval(fetchHealthStatus, 3000);
+        return () => clearInterval(id);
     }, [refreshKey]);
 
-    const fetchHealthStatus = async () => {
-        setHealthLoading(true);
+    const fetchHealthStatus = () => {
         try {
-            const response = await axios.get<HealthResponse>('/api/health');
-            if (response.data.status === 'healthy') {
-                setHealthStatus(response.data.statistics);
-            }
+            const all = localStorageService.getPosts();
+            const analyzed = all.filter(p => p.analysis).length;
+            setHealthStatus({
+                totalRecords: all.length,
+                analyzedRecords: analyzed,
+                pendingAnalysis: all.length - analyzed,
+                lastAnalysisTimestamp: null,
+            });
         } catch {
-            // silently fail
+            // ignore
         } finally {
             setHealthLoading(false);
         }

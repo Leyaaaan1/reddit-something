@@ -61,11 +61,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
         addLog('Clearing posts...', 'info', { service: 'Local Storage', operation: 'clear_all' });
         try {
             localStorageService.clearPosts();
-            try {
-                await axios.delete('/api/clear', { headers: { 'x-admin-key': process.env.NEXT_PUBLIC_ADMIN_KEY || '' } });
-            } catch { /* db clear optional */ }
             addLog('✓ Posts cleared from local storage', 'success', { service: 'Local Storage', operation: 'clear_complete' });
-            alert('All posts cleared!');
             onSuccess();
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : 'Failed to clear';
@@ -89,11 +85,9 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
             addLog('🚀 Starting Reddit scrape process...', 'info', { service: 'Server', operation: 'scrape_init' });
 
             if (clearBeforeScrape) {
-                const clearStart = Date.now();
-                addLog('Clearing old data from local storage...', 'info', { service: 'Local Storage', operation: 'truncate', level: 1 });
                 try {
                     localStorageService.clearPosts();
-                    addLog('✓ Old data cleared', 'success', { service: 'Local Storage', operation: 'truncate', level: 1, duration: Date.now() - clearStart });
+                    addLog('✓ Old data cleared', 'success', { service: 'Local Storage', operation: 'truncate', level: 1 });
                 } catch (clearErr) {
                     addLog('Failed to clear old data (continuing anyway)', 'warning', {
                         service: 'Local Storage', operation: 'truncate',
@@ -101,100 +95,110 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                     });
                 }
             } else {
-                addLog('Skipping local storage clear (append mode)', 'info', { service: 'Local Storage', operation: 'append_mode', level: 1 });
+                addLog('Append mode: keeping existing posts', 'info', { service: 'Local Storage', operation: 'append_mode', level: 1 });
             }
 
             const subredditArray = subreddits.split(',').map(s => s.trim()).filter(s => s);
             const totalExpectedPosts = subredditArray.length * postsPerSubreddit;
 
-            addLog(
-                `Scraping ${subredditArray.length} subreddits (${postsPerSubreddit} posts each)...`,
-                'info',
-                { service: 'Reddit', operation: 'scrape_request', details: `Subreddits: ${subredditArray.join(', ')}\nPosts per subreddit: ${postsPerSubreddit}\nTotal expected: ${totalExpectedPosts} posts` }
-            );
+            addLog(`Scraping ${subredditArray.length} subreddits (${postsPerSubreddit} posts each)...`, 'info', {
+                service: 'Reddit', operation: 'scrape_request',
+                details: `Subreddits: ${subredditArray.join(', ')}\nPosts per subreddit: ${postsPerSubreddit}\nTotal expected: ${totalExpectedPosts} posts`
+            });
+            setCurrentProcessing({ subreddit: subredditArray.join(', '), postCount: 0, totalPosts: totalExpectedPosts });
 
-            setCurrentProcessing({ subreddit: subredditArray[0], postCount: 0, totalPosts: totalExpectedPosts });
-
+            // ── 1. Scrape (server returns posts, stores nothing) ──
             const scrapeStart = Date.now();
-            const progressInterval = setInterval(() => {
-                setCurrentProcessing(prev => ({
-                    ...prev,
-                    postCount: Math.min((prev.postCount || 0) + Math.floor(Math.random() * 3), prev.totalPosts || 0)
-                }));
-            }, 500);
-
             const response = await axios.post<ScrapeResponse>('/api/scrape', {
                 subreddits: subredditArray,
                 postsPerSubreddit
             });
+            if (!response.data.success) throw new Error(response.data.error || 'Scrape failed');
 
-            clearInterval(progressInterval);
-            const scrapeDuration = Date.now() - scrapeStart;
-
-            addLog(`✓ Scraping complete: ${response.data.scraped} posts scraped`, 'success', {
-                service: 'Reddit', operation: 'scrape_complete', duration: scrapeDuration,
-                details: `Scraped: ${response.data.scraped}\nStored: ${response.data.stored}\nAnalyzed: ${response.data.analyzed}`
+            const scrapedPosts = response.data.posts ?? [];
+            addLog(`✓ Scraping complete: ${scrapedPosts.length} posts scraped`, 'success', {
+                service: 'Reddit', operation: 'scrape_complete', duration: Date.now() - scrapeStart
             });
+            for (const sub of subredditArray) {
+                const n = scrapedPosts.filter(p => p.source.toLowerCase() === sub.toLowerCase()).length;
+                addLog(`${n} posts from r/${sub}`, n > 0 ? 'info' : 'warning', {
+                    service: 'Reddit', operation: 'subreddit_complete', level: 2
+                });
+            }
 
-            for (let i = 0; i < subredditArray.length; i++) {
-                const postsFromThisSub = Math.min(postsPerSubreddit, response.data.scraped - i * postsPerSubreddit);
-                if (postsFromThisSub > 0) {
-                    addLog(`${postsFromThisSub} posts from r/${subredditArray[i]}`, 'info', {
-                        service: 'Reddit', operation: 'subreddit_complete', level: 2,
-                        postData: { subreddit: subredditArray[i] }
+            // ── 2. Save to localStorage (skips duplicates) ──
+            addLog('Saving posts to local storage...', 'info', { service: 'Local Storage', operation: 'save_start', level: 1 });
+            const stored = localStorageService.mergePosts(scrapedPosts);
+            addLog(`✓ ${stored} new posts saved to local storage`, 'success', { service: 'Local Storage', operation: 'save_complete', level: 1 });
+
+            // ── 3. Analyze in batches of 5 via /api/analyze ──
+            const BATCH_SIZE = 5;
+            const failed = new Set<string>();
+            let analyzed = 0;
+            const totalToAnalyze = localStorageService.getPendingPosts().length;
+            setCurrentProcessing({ subreddit: 'Gemini analysis', postCount: 0, totalPosts: totalToAnalyze });
+
+            while (true) {
+                const batch = localStorageService.getPendingPosts()
+                    .filter(p => !failed.has(p.post_id))
+                    .slice(0, BATCH_SIZE);
+                if (batch.length === 0) break;
+
+                const batchStart = Date.now();
+                try {
+                    const res = await axios.post<{
+                        success: boolean;
+                        results: { post_id: string; analysis: any }[];
+                        errors?: { post_id: string; error: string }[];
+                    }>('/api/analyze', {
+                        posts: batch.map(p => ({ post_id: p.post_id, title: p.title, content: p.content }))
+                    });
+
+                    const results = res.data.results ?? [];
+                    localStorageService.applyAnalyses(results);
+                    const okIds = new Set(results.map(r => r.post_id));
+                    batch.forEach(p => { if (!okIds.has(p.post_id)) failed.add(p.post_id); });
+                    analyzed += results.length;
+
+                    addLog(`Analyzed ${results.length}/${batch.length} posts in this batch`,
+                        results.length === batch.length ? 'success' : 'warning', {
+                        service: 'Gemini', operation: 'analyze', level: 1, duration: Date.now() - batchStart,
+                        details: res.data.errors?.map(e => `- ${e.post_id}: ${e.error}`).join('\n')
+                    });
+                } catch (batchErr) {
+                    batch.forEach(p => failed.add(p.post_id));
+                    addLog('Analyze request failed for this batch', 'error', {
+                        service: 'Gemini', operation: 'analyze_error', level: 1,
+                        details: axios.isAxiosError(batchErr)
+                            ? (batchErr.response?.data?.error || batchErr.message)
+                            : String(batchErr)
                     });
                 }
+                setCurrentProcessing({ subreddit: 'Gemini analysis', postCount: analyzed, totalPosts: totalToAnalyze });
             }
 
-            addLog(`${response.data.stored} posts stored in database`, 'info', { service: 'Database', operation: 'store', level: 1 });
-            addLog(`${response.data.analyzed} posts analyzed with Gemini AI`, 'info', { service: 'Gemini', operation: 'analyze', level: 1 });
-
-            if (response.data.storageErrors?.length) {
-                addLog(`${response.data.storageErrors.length} storage errors occurred`, 'warning', {
-                    service: 'Database', operation: 'error_report',
-                    details: response.data.storageErrors.map(e => `- ${e.post_id}: ${e.error}`).join('\n')
-                });
-            }
-
-            setResult(response.data);
-            setCurrentProcessing({ subreddit: 'Complete', postCount: response.data.stored, totalPosts: response.data.scraped });
-
-            // Save to localStorage
-            try {
-                addLog('Saving posts to local storage...', 'info', { service: 'Local Storage', operation: 'save_start', level: 1 });
-                const postsResponse = await axios.get<any>('/api/posts');
-                const postsData = postsResponse.data?.data || [];
-                if (Array.isArray(postsData) && postsData.length > 0) {
-                    const existingPosts = localStorageService.getPosts();
-                    const mergedPosts = [
-                        ...existingPosts.filter(ep => !postsData.some((np: any) => np.post_id === ep.post_id)),
-                        ...postsData
-                    ];
-                    localStorageService.savePosts(mergedPosts);
-                    addLog(`✓ ${postsData.length} posts saved to local storage`, 'success', { service: 'Local Storage', operation: 'save_complete', level: 1 });
-                }
-            } catch (err) {
-                addLog('Failed to save posts to local storage', 'warning', {
-                    service: 'Local Storage', operation: 'save_failed',
-                    details: err instanceof Error ? err.message : String(err)
-                });
-            }
-
+            // ── 4. Finish ──
             const totalDuration = Date.now() - startTime;
-            if (response.data.success) {
-                addLog('🎉 Process completed successfully!', 'success', { service: 'Server', operation: 'scrape_complete', duration: totalDuration });
-                onSuccess();
-            } else {
-                addLog('Process completed with issues', 'warning', { service: 'Server', operation: 'scrape_complete_with_issues', duration: totalDuration });
-            }
+            setResult({
+                success: true,
+                message: 'Scrape and analysis complete',
+                scraped: scrapedPosts.length,
+                stored,
+                analyzed
+            });
+            setCurrentProcessing({ subreddit: 'Complete', postCount: analyzed, totalPosts: totalToAnalyze });
+            addLog('🎉 Process completed successfully!', 'success', { service: 'Server', operation: 'scrape_complete', duration: totalDuration });
+            onSuccess();
         } catch (err) {
-            const errorMsg = axios.isAxiosError(err) ? (err.response?.data?.error || err.message) : 'An unknown error occurred';
+            const errorMsg = axios.isAxiosError(err) ? (err.response?.data?.error || err.message) : (err instanceof Error ? err.message : 'An unknown error occurred');
             addLog(`Error: ${errorMsg}`, 'error', { service: 'Server', operation: 'error', details: err instanceof Error ? err.stack : String(err) });
             setError(errorMsg);
         } finally {
             setLoading(false);
         }
     };
+
+
 
     // ── Input shared styles ──────────────────────────────────────────────────
     const inputStyle: React.CSSProperties = {
@@ -228,7 +232,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                 </div>
                 <div>
                     <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
-                        Scrape Reddit Posts
+                        Fetch Reddit Posts
                     </h2>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.15rem 0 0' }}>
                         Fetch data from Reddit and store locally
@@ -282,7 +286,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                         disabled={loading || clearing}
                         style={{ marginRight: '0.5rem', width: '1rem', height: '1rem', cursor: 'pointer' }}
                     />
-                    Clear old data before scraping new subreddits
+                    Clear old data before fetching new subreddits
                 </label>
                 <p style={{ fontSize: '0.75rem', color: 'var(--warn-sub)', marginTop: '0.25rem', marginLeft: '1.5rem' }}>
                     Recommended: This will delete all previous posts to show only new results
@@ -306,7 +310,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
                         fontSize: '0.9375rem'
                     }}
                 >
-                    {loading ? '⏳ Scraping… (this may take a few minutes)' : '▶ Start Scraping'}
+                    {loading ? '⏳ Fetching (this may take a few minutes)' : '▶ Fetch Posts'}
                 </button>
                 <button
                     onClick={handleClearDatabase}
