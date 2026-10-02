@@ -236,7 +236,7 @@ const SEOSection: React.FC = () => {
                             {[
                                 { label: '📧 Email', value: 'paninsorolean@gmail.com', href: 'mailto:paninsorolean@gmail.com' },
                                 { label: '🔗 GitHub', value: 'github.com/Leyaaaan1', href: 'https://github.com/Leyaaaan1' },
-                                { label: '💼 Portfolio', value: 'portfolio-leyan-ifux.vercel.app', href: 'https://portfolio-leyan-ifux.vercel.app/' },
+                                { label: '💼 Portfolio', value: 'portfolio-leyan-ifux.vercel.app', href: 'https://leanpaninsoro.dev/' },
                                 { label: '📦 Repository', value: 'reddit-sentiment-analyzer', href: 'https://github.com/Leyaaaan1/reddit-something' },
                             ].map((item, i) => (
                                 <a
