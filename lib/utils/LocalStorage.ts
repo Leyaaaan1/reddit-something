@@ -57,6 +57,27 @@ export class LocalStorageService {
             return [];
         }
     }
+
+    mergePosts(newPosts: RedditPost[]): number {
+        const existing = this.getPosts();
+        const ids = new Set(existing.map(p => p.post_id));
+        const fresh = newPosts.filter(p => !ids.has(p.post_id));
+        this.savePosts([...existing, ...fresh]);
+        return fresh.length;
+    }
+
+    // Posts that still need analysis
+    getPendingPosts(): RedditPost[] {
+        return this.getPosts().filter(p => !p.analysis);
+    }
+
+    // Apply many analyses with ONE write (updatePostAnalysis rewrites everything each call)
+    applyAnalyses(results: { post_id: string; analysis: any }[]): void {
+        const map = new Map(results.map(r => [r.post_id, r.analysis]));
+        this.savePosts(
+            this.getPosts().map(p => map.has(p.post_id) ? { ...p, analysis: map.get(p.post_id) } : p)
+        );
+    }
 }
 
 export const localStorageService = new LocalStorageService();
