@@ -1,97 +1,115 @@
-# Reddit Analytics Platform
+# Reddit Something
 
-A free tool that scrapes Reddit posts and uses AI to tell you what people are actually saying — sentiment, summaries, and key topics — with everything kept private in your own browser.
+A small web app that pulls posts from public subreddits and uses Google Gemini to classify sentiment, summarize each post, and extract keywords. Results are stored in your own browser and never on a server.
 
-> ⚠️ **Important note:** This project fetches data through Reddit's *unofficial*, undocumented `.json` endpoints (not Reddit's official API). Reddit deprecated unauthenticated access to these endpoints in May 2026, so this method may be unreliable, rate-limited, or blocked entirely depending on when you run it. It is not endorsed by or affiliated with Reddit, and using it may go against Reddit's Terms of Service. Treat this as a personal/educational project rather than a production-ready tool. For a compliant, long-term solution, use [Reddit's official API](https://www.reddit.com/dev/api/) with OAuth.
+> **Project status:** Reddit has announced it is ending support for public RSS feeds, which this app depends on for all of its data. The live demo is expected to stop working on **November 13, 2026**. The source code remains available for reference. <!-- Add a link to Reddit's announcement here -->
 
-## What Does This App Do?
+> **Disclaimer:** This is an educational hobby project, not a production tool. It is not affiliated with or endorsed by Reddit or Google. Post content belongs to its original authors and is sent to the Google Gemini API for analysis. Reddit's Terms of Service restrict some automated access, so use this responsibly and at low volume.
 
-In plain terms:
+## Background
 
-- **Scrape Reddit** — Pull recent posts from any public subreddit(s).
-- **Analyze with AI** — Google Gemini reads each post and returns its sentiment (positive/neutral/negative), a short summary, and key topics/keywords.
-- **View & Filter Results** — Browse everything in a clean dashboard, filterable by sentiment, updating automatically.
-- **Stay Private** — Nothing is stored on a server. All data lives in your browser only, so it's yours alone.
+This project began as a pure Jupyter notebook for a Machine Learning course: no UI, no server, just cells that fetched Reddit text and analyzed it. I rebuilt it as a full-stack web app to learn what it takes to move an experiment into something others can use in a browser: environment configuration, rate limiting, failure handling, and stateless API design.
 
-No Reddit account, login, or official API key is needed to scrape. You only need a free Google Gemini API key for the AI analysis step.
+## Features
 
-## Who Is This For?
-
-- Marketers and SEO professionals researching community sentiment
-- Content strategists looking for trending keywords
-- Anyone curious about what a subreddit is saying about a topic
+- **Fetch posts** from one or more public subreddits through Reddit's RSS feeds (no Reddit login or API key).
+- **AI analysis** with Gemini 2.5 Flash: sentiment (positive / neutral / negative), a short summary, and 3-5 keywords per post.
+- **Live dashboard** with sentiment filters and automatic refresh every 3 seconds.
+- **Process log** that shows each step of the pipeline with timestamps and durations.
+- **Private by design:** posts and analyses are stored in the browser's localStorage. The server keeps nothing.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14 (App Router) + TypeScript |
-| Data Source | Reddit's unofficial `.json` endpoints |
-| AI Analysis | Google Gemini AI (free tier) |
-| Storage | Browser localStorage (no database) |
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript |
+| Data source | Reddit public RSS feeds |
+| AI analysis | Google Gemini 2.5 Flash |
+| Storage | Browser localStorage |
 | Hosting | Vercel |
 
-## How It Works
+## Architecture
 
-**1. You enter subreddits**
-Type in one or more subreddit names, set how many posts to pull per subreddit, and choose whether to clear old data first.
+The API routes are **stateless**. The browser owns storage, deduplication, and the analysis retry loop.
 
-**2. The app scrapes Reddit**
-It fetches posts from Reddit's unofficial `.json` endpoints. No login is required, but this method is not guaranteed to keep working (see disclaimer above).
+```
+Browser                         Next.js API routes             External
+-------                         ------------------             --------
+1. POST subreddits ───────────▶ /api/scrape ─────────────────▶ Reddit RSS
+   ◀─────────── posts[] ─────── (parse + return)
+2. Merge into localStorage
+   (skip duplicates by post_id)
+3. POST pending posts ────────▶ /api/analyze ────────────────▶ Gemini API
+   (batches of 5)  ◀── analyses ─ (validate + return)
+4. Save analyses to localStorage
+5. Dashboard reads localStorage and refreshes every 3s
+```
 
-**3. Posts are saved to your browser**
-Each post is stored in your browser's localStorage. This means your data stays on your device, persists across refreshes, and is never shared with other users.
 
-**4. Gemini AI analyzes each post**
-Every post's title and content is sent to Gemini, which returns:
-- Sentiment (positive, neutral, or negative)
-- A short plain-English summary
-- Key topics/keywords
+## Usage Limits and Safeguards
 
-(Limited to 30 requests per minute on the free tier.)
+- Max 4 subreddits per request, 1-10 posts each; subreddit names are validated (`[a-zA-Z0-9_]`).
+- Post content is truncated to 1,000 characters.
+- Analysis runs in batches of 5 with a 25-second time budget per request.
+- Gemini calls are throttled (minimum 2 seconds apart, 30 per minute) with a capped output size and a request timeout.
+- Gemini responses are schema-validated; invalid output is rejected.
+- Duplicate posts are skipped, and posts that fail analysis are not retried endlessly within a run.
+- Reddit requests use a descriptive User-Agent and a delay between subreddits.
 
-**5. Results appear in a live dashboard**
-Filter by sentiment, watch new results stream in automatically every few seconds, and clear your data anytime with one click.
-
-## Setup Guide
+## Getting Started
 
 ### Requirements
-- [Node.js](https://nodejs.org) installed on your computer
+
+- [Node.js](https://nodejs.org) 18 or later
 - A free [Google Gemini API key](https://ai.google.dev/)
 
-### Steps
+### Installation
 
-1. **Download the project**
-   ```bash
-   git clone [your-repo-url]
-   cd [project-name]
-   ```
+```bash
+git clone https://github.com/Leyaaaan1/reddit-something.git
+cd reddit-something
+npm install
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### Configuration
 
-3. **Add your API key**
+Create a `.env.local` file in the project root:
 
-   Create a file named `.env.local` in the project root and add:
-   ```bash
-   GEMINI_API_KEY=your_gemini_api_key
-   REDDIT_USER_AGENT="windows:my-reddit-scraper:1.0"
-   ```
+```bash
+gemini_api_key=your_gemini_api_key
+REDDIT_USER_AGENT="web:reddit-something:1.0 (by /u/your_username)"
+```
 
-4. **Start the app**
-   ```bash
-   npm run dev
-   ```
+| Variable | Required | Description |
+|---|---|---|
+| `gemini_api_key` | Yes | Gemini API key. The name is lowercase, matching the code. |
+| `REDDIT_USER_AGENT` | Recommended | Descriptive User-Agent with a way to contact you. Falls back to a default if unset. |
 
-5. **Open it in your browser**
-   Go to [http://localhost:3000](http://localhost:3000)
+Never commit real keys. `.env*` files should be listed in `.gitignore`.
 
-That's it — no database setup required.
+### Run
 
-## Notes
+```bash
+npm run dev
+```
 
-- Data is isolated per browser/session — using an incognito window or a different browser gives you a fresh, empty dataset.
-- Clearing data only affects your own session; it never touches anyone else's.
-- Reddit's unofficial `.json` access may stop working at any time without notice — this project is shared as-is, for learning purposes.
+Open [http://localhost:3000](http://localhost:3000).
+
+### Production build
+
+```bash
+npm run build
+npm start
+```
+
+When deploying to Vercel, add both variables under **Project Settings → Environment Variables**.
+
+## Known Limitations
+
+- **No scores or comment counts.** RSS feeds don't include them, so those fields are empty.
+- **Reddit availability.** Reddit can rate-limit or block requests, especially from cloud hosts, and may remove RSS support entirely.
+- **Browser-only storage.** Data is per browser and per device, limited to roughly 5 MB, and lost if site data is cleared.
+- **Public API routes.** There is no authentication. The Gemini rate limiter is per server instance and the free-tier quota is the real ceiling, so heavy use can exhaust it.
+- **LLM accuracy.** Sentiment labels can be wrong, particularly with sarcasm, slang, or mixed languages such as Taglish.
+
