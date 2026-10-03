@@ -21,7 +21,7 @@ const DataFetcher: React.FC<DataFetcherProps> = ({ onSuccess }) => {
     const [clearing, setClearing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<ScrapeResponse | null>(null);
-    const [subreddits, setSubreddits] = useState('Philippines');
+    const [subreddits, setSubreddits] = useState('Philippines, chikaPH');
     const [postsPerSubreddit, setPostsPerSubreddit] = useState(5);
     const [clearBeforeScrape, setClearBeforeScrape] = useState(true);
     const [processLogs, setProcessLogs] = useState<ProcessLog[]>([]);
