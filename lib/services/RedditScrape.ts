@@ -28,7 +28,7 @@ export class RedditScrape {
                     const response = await fetch(url, {
                         method: 'GET',
                         headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'User-Agent': process.env.REDDIT_USER_AGENT || 'reddit-something/1.0 (hobby project)',
                             'Accept': 'application/rss+xml, application/xml, text/xml',
                         },
                         signal: controller.signal,
@@ -74,7 +74,6 @@ export class RedditScrape {
     private parseRSS(xmlText: string, subreddit: string): RedditPost[] {
         const posts: RedditPost[] = [];
 
-        // Simple XML parsing (you can use a library like 'fast-xml-parser' for better parsing)
         const items = xmlText.split('<entry>').slice(1);
 
         for (const item of items) {
