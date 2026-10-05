@@ -225,7 +225,7 @@ const SEOSection: React.FC = () => {
                     }}>
                         <div style={{ marginBottom: '1.5rem' }}>
                             <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
-                                Lean Paninsoro
+                                Leandro Paninsoro
                             </h3>
                             <p style={{ fontSize: '0.9375rem', color: 'var(--text-muted)', margin: 0 }}>
                                 Full-Stack Developer

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
         "social listening tool",
         "free reddit tool",
     ],
-    authors: [{ name: "Lean Paninsoro" }],
+    authors: [{ name: "Leandro Paninsoro" }],
     robots: { index: true, follow: true },
     verification: {
         google: "8rTrvgBFxYQ9tI24yXl7UpKQokWxQxkElcM4fJ0kg3E",  //
